@@ -110,15 +110,16 @@ func (m MaterializeRunner) Run() (types.CompletionWatcher, error) {
 	// inference store. This is currently only required for RediSearch, but other
 	// vector databases allow for manual index configuration even if they support
 	// autogeneration of indexes.
-	if vectorType, ok := m.VType.(provider.VectorType); ok && vectorType.IsEmbedding {
-		m.Logger.Infow("Creating Index", "name", m.ID.Name, "variant", m.ID.Variant)
+	vectorType, ok := m.VType.(provider.VectorType)
+	if !ok {
+		return nil, fmt.Errorf("cannot create index on non-vector type: %v", m.VType)
+	}
+	if vectorType.IsEmbedding {
 		vectorStore, ok := m.Online.(provider.VectorStore)
 		if !ok {
 			return nil, fmt.Errorf("cannot create index on non-vector store: %v", m.Online)
 		}
-		if !ok {
-			return nil, fmt.Errorf("cannot create index on non-vector type: %v", m.VType)
-		}
+		m.Logger.Infow("Creating Index", "name", m.ID.Name, "variant", m.ID.Variant)
 		_, err := vectorStore.CreateIndex(m.ID.Name, m.ID.Variant, vectorType)
 		if err != nil {
 			return nil, fmt.Errorf("create index error: %w", err)
